@@ -186,9 +186,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
                     {
                         Visit(nullSemanticsPredicate);
 
-                        if (selectExpression.Predicate is ParameterExpression
-                            || selectExpression.Predicate.IsAliasWithColumnExpression()
-                            || selectExpression.Predicate is SelectExpression)
+                        if (!IsSearchCondition(nullSemanticsPredicate))
                         {
                             _relationalCommandBuilder.Append(" = ");
                             _relationalCommandBuilder.Append(TrueLiteral);
@@ -438,7 +436,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
             _relationalCommandBuilder.AppendLines(sql);
         }
 
-        private RelationalTypeMapping GetTypeMapping(object value) 
+        private RelationalTypeMapping GetTypeMapping(object value)
             => _typeMapping ?? _relationalTypeMapper.GetMappingForValue(value);
 
         public virtual Expression VisitTable(TableExpression tableExpression)
@@ -1189,7 +1187,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
 
         public virtual Expression VisitPropertyParameter(PropertyParameterExpression propertyParameterExpression)
         {
-            var parameterName 
+            var parameterName
                 = _sqlGenerationHelper.GenerateParameterName(
                     propertyParameterExpression.PropertyParameterName);
 
@@ -1210,9 +1208,27 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
         protected virtual RelationalTypeMapping InferTypeMappingFromColumn([NotNull] Expression expression)
         {
             var column = expression.TryGetColumnExpression();
-            return column?.Property != null 
-                ? _relationalTypeMapper.FindMapping(column.Property) 
+            return column?.Property != null
+                ? _relationalTypeMapper.FindMapping(column.Property)
                 : null;
+        }
+
+        private bool IsSearchCondition(Expression expression)
+        {
+            expression = expression.RemoveConvert();
+
+            if (expression.IsComparisonOperation()
+                || expression.IsLogicalOperation()
+                || expression is LikeExpression
+                || expression is IsNullExpression
+                || expression is InExpression
+                || expression is ExistsExpression
+                || expression is StringCompareExpression)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         protected virtual bool TryGenerateBinaryOperator(ExpressionType op, [NotNull] out string result)
@@ -1256,7 +1272,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
 
                             if (columnExpression != null)
                             {
-                                return 
+                                return
                                     expression.NodeType == ExpressionType.Equal
                                         ? (Expression)new IsNullExpression(columnExpression)
                                         : Expression.Not(new IsNullExpression(columnExpression));

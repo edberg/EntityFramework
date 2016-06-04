@@ -1458,6 +1458,17 @@ ORDER BY [t0].[LeaderNickname], [t0].[FullName], [t0].[FullName0]",
                 Sql);
         }
 
+        public override void Coalesce_operator_in_predicate()
+        {
+            base.Coalesce_operator_in_predicate();
+
+            Assert.Equal(
+                @"SELECT [w].[Id], [w].[AmmunitionType], [w].[IsAutomatic], [w].[Name], [w].[OwnerFullName], [w].[SynergyWithId]
+FROM [Weapon] AS [w]
+WHERE COALESCE([w].[IsAutomatic], 0) = 1",
+                Sql);
+        }
+
         public GearsOfWarQuerySqlServerTest(GearsOfWarQuerySqlServerFixture fixture, ITestOutputHelper testOutputHelper)
             : base(fixture)
         {
